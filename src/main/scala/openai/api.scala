@@ -158,14 +158,13 @@ object ChatCompletion {
       api = apply[F](client, key)
     } yield api
 
+  type K[F[_]] =
+    Kleisli[F, Req.CreateChatCompletionRequest, Resp.ChatCompletionResponse]
+
   def kleisli[F[_]](
       api: ChatCompletion[F]
-  ): Kleisli[
-    F,
-    Req.CreateChatCompletionRequest,
-    Resp.ChatCompletionResponse,
-  ] =
-    Kleisli(r => api.create(r))
+  ): K[F] =
+    Kleisli(api.create(_))
 }
 
 object Test extends IOApp.Simple {
