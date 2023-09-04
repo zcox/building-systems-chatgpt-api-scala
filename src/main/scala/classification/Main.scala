@@ -67,14 +67,14 @@ object Main extends IOApp.Simple {
       template(Context(message))
   }
 
-  def input(message: String): IO[Req.CreateChatCompletionRequest] = 
+  def input(message: String): IO[Req.CreateChatCompletionRequest] =
     for {
       sm <- systemMessage
       m <- UserMessage(message)
       r = Req.chat(
-          Req.Message.system(sm),
-          Req.Message.user(m),
-        )
+        Req.Message.system(sm),
+        Req.Message.user(m),
+      )
     } yield r
 
   def output(r: Resp.ChatCompletionResponse): String =
