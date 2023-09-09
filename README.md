@@ -23,10 +23,10 @@ for {
   )
   story <- llm.promptAs[Story](
     s"""You are a talented author of children's stories. Write a short story about ${person.first} ${person.last}.
-         |Return only a json object with the following fields:
-         |title: the title of your short story
-         |text: the short story
-         |Make sure you return only a valid json object with these fields.""".stripMargin
+       |Return only a json object with the following fields:
+       |title: the title of your short story
+       |text: the short story
+       |Make sure you return only a valid json object with these fields.""".stripMargin
   )
 } yield story
 ```
