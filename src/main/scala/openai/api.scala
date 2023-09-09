@@ -1,5 +1,6 @@
 package openai
 
+import cats._
 import cats.syntax.all._
 import cats.data.{Kleisli, OptionT}
 import cats.effect._
@@ -123,6 +124,26 @@ trait ChatCompletion[F[_]] {
   ): F[Resp.ChatCompletionResponse]
 }
 
+case class ChatCompletionOps[F[_]: Functor](api: ChatCompletion[F]) {
+
+  def prompt(prompt: String): F[String] =
+    api
+      .create(Req.prompt(prompt))
+      .map(_.choices.headOption.map(_.message.content).getOrElse(""))
+
+  def promptK: Kleisli[F, String, String] =
+    Kleisli(prompt)
+
+  def chat(messages: Req.Message*): F[String] =
+    api
+      .create(Req.chat(messages: _*))
+      .map(_.choices.headOption.map(_.message.content).getOrElse(""))
+
+  def chatK: Kleisli[F, Seq[Req.Message], String] =
+    Kleisli(chat)
+
+}
+
 object ChatCompletion {
 
   val uri = uri"https://api.openai.com/v1/chat/completions"
@@ -168,6 +189,7 @@ object ChatCompletion {
 }
 
 object Test extends IOApp.Simple {
+  import openai.syntax._
 
   implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -177,21 +199,19 @@ object Test extends IOApp.Simple {
         .simple[IO]
         .use { api =>
           for {
-            r1 <- api.create(
-              Req.prompt("Take the letters in l-o-l-l-i-p-o-p and reverse them")
+            r1 <- api.prompt(
+              "Take the letters in l-o-l-l-i-p-o-p and reverse them"
             )
-            r2 <- api.create(
-              Req.chat(
-                Req.Message.system(
-                  "You are an assistant who responds in the style of Dr Seuss. All your responses must be one sentence long."
-                ),
-                Req.Message.user("write me a story about a happy carrot"),
-              )
+            r2 <- api.chat(
+              Req.Message.system(
+                "You are an assistant who responds in the style of Dr Seuss. All your responses must be one sentence long."
+              ),
+              Req.Message.user("write me a story about a happy carrot"),
             )
           } yield (r1, r2)
 
         }
-      () <- IO(r1.choices.foreach(c => println(c.message.content)))
-      () <- IO(r2.choices.foreach(c => println(c.message.content)))
+      () <- IO(println(r1))
+      () <- IO(println(r2))
     } yield ()
 }

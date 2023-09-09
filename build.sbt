@@ -22,6 +22,7 @@ libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-ember-client" % V.http4s,
   "org.http4s" %% "http4s-dsl" % V.http4s,
   "io.circe" %% "circe-generic" % V.circe,
+  "io.circe" %% "circe-parser" % V.circe,
   "ch.qos.logback" % "logback-classic" % V.logback,
   "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   "com.github.jknack" % "handlebars-jackson2" % V.handlebars,
