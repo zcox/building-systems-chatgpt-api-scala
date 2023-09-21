@@ -16,4 +16,12 @@ case class RichChatCompletion[F[_]: MonadThrow](api: ChatCompletion[F]) {
       a <- c.message.contentAs[A].liftTo[F]
     } yield a
 
+  def chatAs[A: Decoder](ms: Req.Message*): F[A] =
+    for {
+      r <- api.create(Req.chat(ms: _*))
+      c <- r.choices.headOption
+        .liftTo[F](new NullPointerException("No choices in response"))
+      a <- c.message.contentAs[A].liftTo[F]
+    } yield a
+
 }
