@@ -1,5 +1,7 @@
 package json
 
+import cats.ApplicativeThrow
+import cats.data.Kleisli
 import cats.syntax.all._
 import io.circe.{Json, ParsingFailure, Decoder, Error}
 import io.circe.parser._
@@ -33,5 +35,9 @@ object JsonUtils {
       j <- parseFiltered(s)
       a <- Decoder[A].decodeJson(j)
     } yield a
+
+  def parseAndDecodeK[F[_]: ApplicativeThrow, A: Decoder]
+      : Kleisli[F, String, A] =
+    Kleisli(parseAndDecode[A](_).liftTo[F])
 
 }
