@@ -9,9 +9,9 @@ object Handlebars {
     Template.string[F](template).apply(json)
 
   def apply[F[_]: Sync](template: String, json: Json): F[String] =
-    Template.json[F](template).apply(json)
+    Template.string[F](template).json(json)
 
   def apply[F[_]: Sync, A: Encoder](template: String, a: A): F[String] =
-    Template.encoding[F, A](template).apply(a)
+    Template.string[F](template).encoding[A].apply(a)
 
 }

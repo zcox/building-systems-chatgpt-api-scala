@@ -60,9 +60,11 @@ object Main extends IOApp.Simple {
     object Context {
       def apply(message: String): Context = Context(delimiter, message)
     }
-    val template = Template.encoding[IO, Context](
-      "{{delimiter}}{{message}}{{delimiter}}"
-    )
+    val template = Template
+      .string[IO](
+        "{{delimiter}}{{message}}{{delimiter}}"
+      )
+      .encoding[Context]
     def apply(message: String): IO[String] =
       template(Context(message))
   }

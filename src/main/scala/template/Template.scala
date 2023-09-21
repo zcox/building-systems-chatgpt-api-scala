@@ -1,11 +1,12 @@
 package template
 
 import cats.Contravariant
+import cats.data.Kleisli
 import cats.syntax.all._
 import cats.effect.Sync
 import io.circe.{Json, Encoder}
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.jknack.handlebars._
+import com.github.jknack.handlebars.{Template => HTemplate, _}
 
 trait Template[F[_], A] {
   def apply(json: A): F[String]
@@ -13,9 +14,8 @@ trait Template[F[_], A] {
 
 object Template {
 
-  def string[F[_]: Sync](template: String): Template[F, String] =
+  def htemplate[F[_]: Sync](t: HTemplate): Template[F, String] =
     new Template[F, String] {
-      val t = new Handlebars().compileInline(template)
       override def apply(json: String): F[String] =
         Sync[F].delay {
           t.apply(
@@ -26,6 +26,12 @@ object Template {
           )
         }
     }
+
+  def string[F[_]: Sync](template: String): Template[F, String] =
+    htemplate(new Handlebars().compileInline(template))
+
+  def file[F[_]: Sync](file: String): Template[F, String] =
+    htemplate(new Handlebars().compile(file))
 
   implicit def contravariant[F[_]]: Contravariant[Template[F, *]] =
     new Contravariant[Template[F, *]] {
@@ -38,10 +44,19 @@ object Template {
         }
     }
 
-  def json[F[_]: Sync](template: String): Template[F, Json] =
-    string[F](template).contramap(_.noSpaces)
+  def kleisli[F[_], A](t: Template[F, A]): Kleisli[F, A, String] =
+    Kleisli(t(_))
 
-  def encoding[F[_]: Sync, A: Encoder](template: String): Template[F, A] =
-    json[F](template).contramap(Encoder[A].apply(_))
+  implicit class StringTemplateOps[F[_]](t: Template[F, String]) {
+    def json: Template[F, Json] =
+      t.contramap(_.noSpaces)
+    def encoding[A: Encoder]: Template[F, A] =
+      json.encoding[A]
+  }
+
+  implicit class JsonTemplateOps[F[_]](t: Template[F, Json]) {
+    def encoding[A: Encoder]: Template[F, A] =
+      t.contramap(Encoder[A].apply(_))
+  }
 
 }
