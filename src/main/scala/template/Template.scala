@@ -47,6 +47,11 @@ object Template {
   def kleisli[F[_], A](t: Template[F, A]): Kleisli[F, A, String] =
     Kleisli(t(_))
 
+  implicit class TemplateOps[F[_], A](t: Template[F, A]) {
+    def K: Kleisli[F, A, String] =
+      kleisli(t)
+  }
+
   implicit class StringTemplateOps[F[_]](t: Template[F, String]) {
     def json: Template[F, Json] =
       t.contramap(_.noSpaces)
@@ -57,6 +62,8 @@ object Template {
   implicit class JsonTemplateOps[F[_]](t: Template[F, Json]) {
     def encoding[A: Encoder]: Template[F, A] =
       t.contramap(Encoder[A].apply(_))
+    def encodingK[A: Encoder]: Kleisli[F, A, String] =
+      encoding.K
   }
 
 }

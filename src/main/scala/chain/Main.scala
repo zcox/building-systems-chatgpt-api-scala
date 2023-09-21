@@ -12,7 +12,7 @@ object Main extends IOApp.Simple {
   def run: IO[Unit] =
     for {
       story <- ChatCompletion.simple[IO].use { api =>
-        StoryWriter.write[IO](api)
+        StoryWriter[IO]().writeK(api)
       }
       () <- IO(println(story.title))
       () <- IO(println("--------"))
