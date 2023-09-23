@@ -61,6 +61,11 @@ object Req {
       ),
     )
 
+  def promptK[F[_]: Applicative](
+      model: String = "gtp-3.5-turbo"
+  ): Kleisli[F, String, CreateChatCompletionRequest] =
+    Kleisli.fromFunction[F, String](prompt(_, model))
+
   def chat(
       messages: List[Message],
       model: String = "gpt-3.5-turbo",
@@ -105,7 +110,16 @@ object Resp {
       model: String,
       choices: List[Choice],
       usage: Usage,
-  )
+  ) {
+    def firstContentO: Option[String] =
+      choices.headOption.map(_.message.content)
+    def firstContent: String =
+      firstContentO.getOrElse("")
+  }
+
+  def firstContentK[F[_]: Applicative]
+      : Kleisli[F, ChatCompletionResponse, String] =
+    Kleisli.fromFunction[F, ChatCompletionResponse](_.firstContent)
 }
 
 object OpenaiApiKey {
@@ -148,7 +162,7 @@ object ChatCompletion {
 
   val uri = uri"https://api.openai.com/v1/chat/completions"
 
-  def apply[F[_]: Concurrent: Logger](
+  def apply[F[_]: Concurrent](
       client: Client[F],
       openaiApiKey: String,
   ): ChatCompletion[F] =
@@ -158,7 +172,6 @@ object ChatCompletion {
       ): F[Resp.ChatCompletionResponse] =
         for {
           e <- request.asJson.pure[F]
-          () <- Logger[F].debug(s"Request entity = $e")
           r = Request[F](
             method = Method.POST,
             uri = uri,
@@ -166,13 +179,11 @@ object ChatCompletion {
               Authorization(Credentials.Token(AuthScheme.Bearer, openaiApiKey))
             ),
           ).withEntity(e)
-          () <- Logger[F].debug(s"Request = $r")
           rsp <- client.expect[Resp.ChatCompletionResponse](r)
-          () <- Logger[F].debug(s"Response = $rsp")
         } yield rsp
     }
 
-  def simple[F[_]: Async: Network: Logger]: Resource[F, ChatCompletion[F]] =
+  def simple[F[_]: Async: Network]: Resource[F, ChatCompletion[F]] =
     for {
       client <- EmberClientBuilder.default[F].build
       key <- Resource.eval(OpenaiApiKey.fromEnvOrFail[F])

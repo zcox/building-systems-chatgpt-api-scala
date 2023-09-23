@@ -2,6 +2,8 @@ package json
 
 import template._
 import openai._
+import openai.syntax._
+import json.JsonUtils.parseAndDecodeK
 import json.syntax._
 import cats._
 import cats.data.Kleisli
@@ -26,6 +28,9 @@ case class RichChatCompletion[F[_]: MonadThrow](api: ChatCompletion[F]) {
       p <- t(a)
       b <- promptAs[B](p)
     } yield b
+
+  def promptAsK[A, B: Decoder](t: Template[F, A]): Kleisli[F, A, B] =
+    t.K.andThen(api.promptK).andThen(parseAndDecodeK[F, B])
 
   def chatAs[A: Decoder](ms: Req.Message*): F[A] =
     for {

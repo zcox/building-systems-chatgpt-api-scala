@@ -5,8 +5,11 @@ import openai._
 import openai.syntax._
 import json.JsonUtils.parseAndDecodeK
 import json.syntax._
+import cats.MonadThrow
+import cats.data.Kleisli
 import cats.effect._
 import cats.syntax.all._
+import io.circe.Decoder
 import io.circe.generic.auto._
 
 case class Person(
@@ -18,6 +21,14 @@ case class Story(
     title: String,
     text: String,
 )
+
+object Chain {
+  def apply[F[_]: MonadThrow, A, B: Decoder](
+      template: Template[F, A],
+      llm: ChatCompletion[F],
+  ): Kleisli[F, A, B] =
+    template.K.andThen(llm.promptK).andThen(parseAndDecodeK[F, B])
+}
 
 case class StoryWriter[F[_]: Sync]() {
 
@@ -34,11 +45,9 @@ case class StoryWriter[F[_]: Sync]() {
 
   // template rendering, llm inference, json decoding, etc are kleislis, and we can compose those all up into one overall program/chain
   def writeK(llm: ChatCompletion[F]): F[Story] = {
-    val createRandomPerson =
-      personTemplate.K.andThen(llm.promptK).andThen(parseAndDecodeK[F, Person])
-    val createStoryForPerson =
-      storyTemplate.K.andThen(llm.promptK).andThen(parseAndDecodeK[F, Story])
-    val chain = createRandomPerson.andThen(createStoryForPerson)
+    val generateRandomPerson = Chain[F, String, Person](personTemplate, llm)
+    val writeStoryForPerson = Chain[F, Person, Story](storyTemplate, llm)
+    val chain = generateRandomPerson.andThen(writeStoryForPerson)
     chain.run("")
   }
 
