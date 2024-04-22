@@ -170,17 +170,15 @@ object ChatCompletion {
       override def create(
           request: Req.CreateChatCompletionRequest
       ): F[Resp.ChatCompletionResponse] =
-        for {
-          e <- request.asJson.pure[F]
-          r = Request[F](
+        client.expect[Resp.ChatCompletionResponse](
+          Request[F](
             method = Method.POST,
             uri = uri,
             headers = Headers(
               Authorization(Credentials.Token(AuthScheme.Bearer, openaiApiKey))
             ),
-          ).withEntity(e)
-          rsp <- client.expect[Resp.ChatCompletionResponse](r)
-        } yield rsp
+          ).withEntity(request.asJson)
+        )
     }
 
   def simple[F[_]: Async: Network]: Resource[F, ChatCompletion[F]] =
@@ -197,6 +195,15 @@ object ChatCompletion {
       api: ChatCompletion[F]
   ): K[F] =
     Kleisli(api.create(_))
+
+  def logging[F[_]: FlatMap: Logger](api: K[F]): K[F] =
+    Kleisli(req =>
+      for {
+        () <- Logger[F].debug(req.toString)
+        resp <- api.run(req)
+        () <- Logger[F].debug(resp.toString)
+      } yield resp
+    )
 }
 
 object Test extends IOApp.Simple {
